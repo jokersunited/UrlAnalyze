@@ -33,10 +33,10 @@ print(bad_df)
 def create_model(url_len):
 
     model = Sequential()
-    model.add(Convolution1D(filters=16, kernel_size=2, padding='same', activation=tf.nn.relu))
-    model.add(MaxPool1D(pool_size=4))
-    model.add(LSTM(32))
-    model.add(Dropout(0.2))
+    model.add(Convolution1D(200, 2, 1, padding='same', activation=tf.nn.relu))
+    model.add(MaxPool1D(pool_size=2))
+    model.add((LSTM(units=100, dropout=0.3, recurrent_dropout=0.3)))
+    model.add(Dropout(0.5))
     model.add(Dense(1, activation='softmax'))
 
     inputs = tf.keras.layers.Input(shape=(200, 64))
