@@ -4,7 +4,7 @@ import pandas as pd
 import threading
 
 url = "https://phishtank.com/phish_search.php"
-page_amt = 5
+page_amt = 50
 columns = ["url", "live"]
 url_df = pd.DataFrame(columns=columns)
 
@@ -57,4 +57,4 @@ for page in range(0, page_amt):
     except:
         pass
 
-url_df.to_csv("phish.csv")
+url_df.to_csv("phish.csv", index=False)
