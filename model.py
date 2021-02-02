@@ -30,10 +30,10 @@ url_df = url_df.to_numpy()
 def create_model(url_len):
 
     model = Sequential()
-    model.add(Convolution2D(16, 2, 2, activation='relu', input_shape=(url_len, 64, 1)))
+    model.add(Convolution2D(32, 2, 2, activation='relu', input_shape=(url_len, 64, 1)))
     model.add(MaxPool2D(pool_size=(2, 2)))
     model.add(Reshape([int(url_len/4), -1]))
-    model.add(LSTM(32, return_sequences=True))
+    model.add(LSTM(50, return_sequences=True))
     model.add(Flatten())
     model.add(Dense(1, activation='softmax'))
 
