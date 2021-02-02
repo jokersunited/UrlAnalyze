@@ -1,13 +1,14 @@
 import tensorflow as tf
 import pandas as pd
-from url import Url
+from url import get_embedding, char_dict
 import numpy as np
 
 from tensorflow.keras import Sequential
-from tensorflow.keras.layers import Convolution2D, Dense, MaxPool2D, Flatten, LSTM, Reshape
+from tensorflow.keras.layers import Convolution1D, Dense, MaxPool1D, LSTM, Reshape, Dropout, Embedding
 from tensorflow.keras.models import Model
 
 url_df = pd.read_csv('data.csv')
+
 url_df = url_df.sample(frac=1).reset_index(drop=True)
 url_df = url_df.truncate(after=1500)
 url_df.loc[url_df['label'] == 'good', 'label'] = 0
@@ -19,25 +20,26 @@ bad_df = url_df[url_df.label == 1].to_numpy()
 
 url_df = url_df.to_numpy()
 
-# print(good_df)
-# print(bad_df)
+print(good_df)
+print(bad_df)
 
 # url = Url(url_df.loc[url_df.index[93], 'url'], 200)
 # url_ts = url.get_embedding()
-
+# exit()
+#
 # print(url_ts)
+
 
 def create_model(url_len):
 
     model = Sequential()
-    model.add(Convolution2D(32, 2, 2, activation='relu', input_shape=(url_len, 64, 1)))
-    model.add(MaxPool2D(pool_size=(2, 2)))
-    model.add(Reshape([int(url_len/4), -1]))
-    model.add(LSTM(50, return_sequences=True))
-    model.add(Flatten())
+    model.add(Convolution1D(filters=16, kernel_size=2, padding='same', activation=tf.nn.relu))
+    model.add(MaxPool1D(pool_size=4))
+    model.add(LSTM(32))
+    model.add(Dropout(0.2))
     model.add(Dense(1, activation='softmax'))
 
-    inputs = tf.keras.layers.Input(shape=(url_len, 64, 1))
+    inputs = tf.keras.layers.Input(shape=(200, 64))
     outputs = model(inputs)
 
     model.summary()
@@ -45,15 +47,17 @@ def create_model(url_len):
     return Model(inputs=inputs, outputs=outputs)
 
 
-data = [Url(url, 200).get_embedding() for url in url_df[:, 0]]
+data = [get_embedding(url, 200) for url in url_df[:, 0]]
 # print(data)
 # print(url_df[:, 1])
 # print(np.asarray(url_df[:, 1]).astype('float32'))
 
 model = create_model(200)
-model.compile(optimizer='sgd', loss=tf.keras.losses.BinaryCrossentropy(), metrics=['accuracy'])
+opt = tf.keras.optimizers.Adam(learning_rate=0.1)
+model.compile(optimizer=opt, loss=tf.keras.losses.BinaryCrossentropy(), metrics=['accuracy'])
 model.fit(np.asarray(data), np.asarray(url_df[:, 1]).astype('float32'), epochs=150, batch_size=64)
-accuracy = model.evaluate(data, np.asarray(url_df[:, 1]).astype('float32'))
+
+accuracy = model.evaluate(np.asarray(data), np.asarray(url_df[:, 1]).astype('float32'))
 print('Accuracy: %.2f' % (accuracy*100))
 
 
