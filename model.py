@@ -4,13 +4,13 @@ from url import get_embedding, char_dict
 import numpy as np
 
 from tensorflow.keras import Sequential
-from tensorflow.keras.layers import Convolution1D, Dense, MaxPool1D, LSTM, Reshape, Dropout, Embedding
+from tensorflow.keras.layers import Convolution1D, Dense, MaxPool1D, LSTM, ReLU
 from tensorflow.keras.models import Model
 
 url_df = pd.read_csv('data.csv')
 
 url_df = url_df.sample(frac=1).reset_index(drop=True)
-url_df = url_df.truncate(after=1500)
+url_df = url_df.truncate(after=50000)
 url_df.loc[url_df['label'] == 'good', 'label'] = 0
 url_df.loc[url_df['label'] == 'bad', 'label'] = 1
 batch_size = 64
@@ -30,16 +30,18 @@ print(bad_df)
 # print(url_ts)
 
 
-def create_model(url_len):
+def create_model(url_len, filters=32, kernel_size=4, lstm_units=16, dropout=0.2):
+
+    pool = int(kernel_size/2)
 
     model = Sequential()
-    model.add(Convolution1D(200, 2, 1, padding='same', activation=tf.nn.relu))
-    model.add(MaxPool1D(pool_size=2))
-    model.add((LSTM(units=100, dropout=0.3, recurrent_dropout=0.3)))
-    model.add(Dropout(0.5))
-    model.add(Dense(1, activation='softmax'))
+    model.add(Convolution1D(filters=filters, kernel_size=kernel_size))
+    model.add(ReLU())
+    model.add(MaxPool1D(pool_size=pool))
+    model.add(LSTM(units=lstm_units, dropout=dropout, return_sequences=True))
+    model.add(Dense(1, activation='sigmoid'))
 
-    inputs = tf.keras.layers.Input(shape=(200, 64))
+    inputs = tf.keras.layers.Input(shape=(url_len, 64))
     outputs = model(inputs)
 
     model.summary()
@@ -53,9 +55,9 @@ data = [get_embedding(url, 200) for url in url_df[:, 0]]
 # print(np.asarray(url_df[:, 1]).astype('float32'))
 
 model = create_model(200)
-opt = tf.keras.optimizers.Adam(learning_rate=0.1)
+opt = tf.keras.optimizers.Adam(learning_rate=0.01)
 model.compile(optimizer=opt, loss=tf.keras.losses.BinaryCrossentropy(), metrics=['accuracy'])
-model.fit(np.asarray(data), np.asarray(url_df[:, 1]).astype('float32'), epochs=150, batch_size=64)
+model.fit(np.asarray(data), np.asarray(url_df[:, 1]).astype('float32'), epochs=50, batch_size=120)
 
 accuracy = model.evaluate(np.asarray(data), np.asarray(url_df[:, 1]).astype('float32'))
 print('Accuracy: %.2f' % (accuracy*100))
