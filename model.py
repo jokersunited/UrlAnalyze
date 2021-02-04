@@ -29,7 +29,6 @@ test_df = url_df.truncate(before=35000, after=36000)
 test_df.loc[test_df['label'] == 'good', 'label'] = 0
 test_df.loc[test_df['label'] == 'bad', 'label'] = 1
 
-url_df = url_df.truncate(after=15000)
 url_df.loc[url_df['label'] == 'good', 'label'] = 0
 url_df.loc[url_df['label'] == 'bad', 'label'] = 1
 batch_size = 64
