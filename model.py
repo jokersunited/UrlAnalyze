@@ -23,6 +23,7 @@ class TimeHistory(Callback):
 
 
 url_df = pd.read_csv('data.csv')
+print(url_df)
 url_df = url_df.sample(frac=1).reset_index(drop=True)
 
 test_df = url_df.truncate(before=35000, after=36000)
