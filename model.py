@@ -1,10 +1,10 @@
 import tensorflow as tf
 import pandas as pd
-from url import get_embedding, char_dict
+from url import get_encoding, char_dict
 import numpy as np
 
 from tensorflow.keras import Sequential
-from tensorflow.keras.layers import Convolution1D, Dense, MaxPool1D, LSTM, ReLU, Flatten
+from tensorflow.keras.layers import Convolution1D, Dense, MaxPool1D, LSTM, ReLU, Flatten, Embedding
 from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import Callback
 
@@ -25,11 +25,12 @@ class TimeHistory(Callback):
 url_df = pd.read_csv('data.csv')
 url_df = url_df.sample(frac=1).reset_index(drop=True)
 
-test_df = url_df.truncate(before=35000, after=35100)
+# test_df = url_df.truncate(before=35000, after=35100)
+test_df = url_df.truncate(after=1000)
 test_df.loc[test_df['label'] == 'good', 'label'] = 0
 test_df.loc[test_df['label'] == 'bad', 'label'] = 1
 
-url_df = url_df.truncate(after=35000)
+url_df = url_df.truncate(after=1000)
 url_df.loc[url_df['label'] == 'good', 'label'] = 0
 url_df.loc[url_df['label'] == 'bad', 'label'] = 1
 batch_size = 64
@@ -49,8 +50,8 @@ test_df = test_df.to_numpy()
 #
 # print(url_ts)
 
-test_data = [get_embedding(url, 200) for url in test_df[:, 0]]
-data = [get_embedding(url, 200) for url in url_df[:, 0]]
+test_data = [get_encoding(url, 200) for url in test_df[:, 0]]
+data = [get_encoding(url, 200) for url in url_df[:, 0]]
 
 
 def create_model(url_len, filters=32, kernel_size=4, lstm_units=16, dropout=0.2):
@@ -58,6 +59,7 @@ def create_model(url_len, filters=32, kernel_size=4, lstm_units=16, dropout=0.2)
     pool = int(kernel_size/2)
 
     model = Sequential()
+    model.add(Embedding(len(char_dict) + 1, 128, input_length=200))
     model.add(Convolution1D(filters=filters, kernel_size=kernel_size))
     model.add(ReLU())
     model.add(MaxPool1D(pool_size=pool))
@@ -65,7 +67,7 @@ def create_model(url_len, filters=32, kernel_size=4, lstm_units=16, dropout=0.2)
     model.add(Flatten())
     model.add(Dense(1, activation='sigmoid'))
 
-    inputs = tf.keras.layers.Input(shape=(url_len, 64))
+    inputs = tf.keras.layers.Input(shape=(url_len, ))
     outputs = model(inputs)
 
     model.summary()
@@ -81,25 +83,25 @@ def get_results(name, filters=32, kernel_size=4, lstm_units=16, dropout=0.2):
     time_callback = TimeHistory()
     history = model.fit(np.asarray(data), np.asarray(url_df[:, 1]).astype('float32'), epochs=20, batch_size=batch_size, validation_split=0.2, shuffle=True, callbacks=[time_callback])
 
-    test = model(np.asarray([get_embedding("adserving.favorit-network.com/eas?camp=19320;cre=mu&grpid=1738&tag_id=618&nums=FGApbjFAAA", 200)]))
+    test = model(np.asarray([get_encoding("adserving.favorit-network.com/eas?camp=19320;cre=mu&grpid=1738&tag_id=618&nums=FGApbjFAAA", 200)]))
     print("Testing url result (bad): " + str(test))
 
-    test = model(np.asarray([get_embedding("stormpages.com/script/ping.txt", 200)]))
+    test = model(np.asarray([get_encoding("stormpages.com/script/ping.txt", 200)]))
     print("Testing url result (bad): " + str(test))
 
-    test = model(np.asarray([get_embedding("santacruzsuspension.com/?j=bleach-episode-245", 200)]))
+    test = model(np.asarray([get_encoding("santacruzsuspension.com/?j=bleach-episode-245", 200)]))
     print("Testing url result (bad): " + str(test))
 
-    test = model(np.asarray([get_embedding("ratevin.com/story.php?title=jean-simmons-died-british-actress-jean-simmons-dead-jean-simmons-dies-in-los-angeles", 200)]))
+    test = model(np.asarray([get_encoding("ratevin.com/story.php?title=jean-simmons-died-british-actress-jean-simmons-dead-jean-simmons-dies-in-los-angeles", 200)]))
     print("Testing url result (good): " + str(test))
 
-    test = model(np.asarray([get_embedding("fanbase.com/Arkansas-Razorbacks-Mens-Basketball-1985-86", 200)]))
+    test = model(np.asarray([get_encoding("fanbase.com/Arkansas-Razorbacks-Mens-Basketball-1985-86", 200)]))
     print("Testing url result (good): " + str(test))
 
-    test = model(np.asarray([get_embedding("mmaroot.com/david-loiseau-vs-charles-mccarthy-fight-video/", 200)]))
+    test = model(np.asarray([get_encoding("mmaroot.com/david-loiseau-vs-charles-mccarthy-fight-video/", 200)]))
     print("Testing url result (good): " + str(test))
 
-    test = model(np.asarray([get_embedding("thestar.com/news/canada/politics/article/1067979--three-criminal-charges-for-tony-tomassi-ex-member-of-charest-cabinet-in-quebec", 200)]))
+    test = model(np.asarray([get_encoding("thestar.com/news/canada/politics/article/1067979--three-criminal-charges-for-tony-tomassi-ex-member-of-charest-cabinet-in-quebec", 200)]))
     print("Testing url result (good): " + str(test))
 
     accuracy = model.evaluate(np.asarray(test_data), np.asarray(test_df[:, 1]).astype('float32'), batch_size=256)
