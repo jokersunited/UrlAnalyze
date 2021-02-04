@@ -1,6 +1,6 @@
 import tensorflow as tf
 import pandas as pd
-from url import get_encoding, char_dict
+from url import get_encoding, char_dict, embedding_layer
 import numpy as np
 
 from tensorflow.keras import Sequential
@@ -25,12 +25,11 @@ class TimeHistory(Callback):
 url_df = pd.read_csv('data.csv')
 url_df = url_df.sample(frac=1).reset_index(drop=True)
 
-# test_df = url_df.truncate(before=35000, after=35100)
-test_df = url_df.truncate(after=1000)
+test_df = url_df.truncate(before=35000, after=36000)
 test_df.loc[test_df['label'] == 'good', 'label'] = 0
 test_df.loc[test_df['label'] == 'bad', 'label'] = 1
 
-url_df = url_df.truncate(after=1000)
+url_df = url_df.truncate(after=15000)
 url_df.loc[url_df['label'] == 'good', 'label'] = 0
 url_df.loc[url_df['label'] == 'bad', 'label'] = 1
 batch_size = 64
@@ -59,7 +58,7 @@ def create_model(url_len, filters=32, kernel_size=4, lstm_units=16, dropout=0.2)
     pool = int(kernel_size/2)
 
     model = Sequential()
-    model.add(Embedding(len(char_dict) + 1, 128, input_length=200))
+    model.add(embedding_layer)
     model.add(Convolution1D(filters=filters, kernel_size=kernel_size))
     model.add(ReLU())
     model.add(MaxPool1D(pool_size=pool))
@@ -117,7 +116,7 @@ def get_results(name, filters=32, kernel_size=4, lstm_units=16, dropout=0.2):
 # result4 = get_results('16F-2K-16L', filters=16, lstm_units=16, kernel_size=2)
 # result5 = get_results('32F-2K-32L', filters=32, lstm_units=32, kernel_size=2)
 # result6 = get_results('64F-2K-64L', filters=64, lstm_units=64, kernel_size=2)
-result7 = get_results('256F-4K-32L', filters=64, lstm_units=32)
+result7 = get_results('256F-4K-32L', filters=128, lstm_units=32)
 # result8 = get_results('64F-4K-32L', filters=64, lstm_units=32)
 # result9 = get_results('64F-4K-64L', filters=64, lstm_units=64)
 
