@@ -5,7 +5,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 
 from tensorflow.keras import Sequential
-from tensorflow.keras.layers import Convolution1D, Dense, MaxPool1D, LSTM, ReLU, Flatten, Embedding
+from tensorflow.keras.layers import Convolution1D, Dense, MaxPool1D, LSTM, ReLU, Softmax, Dropout, Flatten
 from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import Callback
 
@@ -48,9 +48,11 @@ class TimeHistory(Callback):
 url_df = pd.read_csv('data.csv')
 test_df = pd.read_csv('urldata.csv')
 
-test_df = test_df.truncate(after=200)
+url_df = url_df.sample(frac=1).reset_index(drop=True)
+test_df = test_df.sample(frac=1).reset_index(drop=True)
 
-url_df = url_df.truncate(after=1000)
+test_df = test_df.truncate(after=2000)
+url_df = url_df.truncate(after=10000)
 url_df.loc[url_df.label == 'good', 'label'] = 0
 url_df.loc[url_df.label == 'bad', 'label'] = 1
 
@@ -84,10 +86,12 @@ def create_model(url_len, filters=32, kernel_size=4, lstm_units=16, dropout=0.2)
 
     model = Sequential()
     model.add(embedding_layer)
-    model.add(Convolution1D(filters=filters, kernel_size=kernel_size))
+    model.add(Convolution1D(filters=filters, kernel_size=3))
     model.add(ReLU())
-    model.add(MaxPool1D(pool_size=pool))
-    model.add(LSTM(units=lstm_units, dropout=dropout, return_sequences=True))
+    model.add(MaxPool1D(pool_size=2))
+    model.add(LSTM(units=lstm_units, return_sequences=True))
+    model.add(Dropout(dropout))
+    model.add(Softmax())
     model.add(Flatten())
     model.add(Dense(1, activation='sigmoid'))
 
@@ -105,7 +109,7 @@ def get_results(name, filters=32, kernel_size=4, lstm_units=16, dropout=0.2):
     model.compile(optimizer=opt, loss=tf.keras.losses.BinaryCrossentropy(), metrics=['accuracy'])
 
     time_callback = TimeHistory()
-    history = model.fit(X_train, np.asarray(y_train).astype('float32'), epochs=20, batch_size=batch_size, callbacks=[time_callback])
+    history = model.fit(X_train, np.asarray(y_train).astype('float32'), epochs=20, batch_size=batch_size, validation_data=(X_test, y_test), validation_steps=24, callbacks=[time_callback])
 
     test = model(np.asarray([get_encoding("adserving.favorit-network.com/eas?camp=19320;cre=mu&grpid=1738&tag_id=618&nums=FGApbjFAAA", 200)]))
     print("Testing url result (bad): " + str(test))
@@ -129,6 +133,7 @@ def get_results(name, filters=32, kernel_size=4, lstm_units=16, dropout=0.2):
     print("Testing url result (good): " + str(test))
 
     accuracy = model.evaluate(X_test, y_test, batch_size=128)
+    model.save('model')
     return [history, name, time_callback.times, accuracy]
 
 
@@ -141,7 +146,7 @@ def get_results(name, filters=32, kernel_size=4, lstm_units=16, dropout=0.2):
 # result4 = get_results('16F-2K-16L', filters=16, lstm_units=16, kernel_size=2)
 # result5 = get_results('32F-2K-32L', filters=32, lstm_units=32, kernel_size=2)
 # result6 = get_results('64F-2K-64L', filters=64, lstm_units=64, kernel_size=2)
-result7 = get_results('256F-4K-32L', filters=128, lstm_units=32)
+result7 = get_results('256F-4K-32L', filters=32, lstm_units=100)
 # result8 = get_results('64F-4K-32L', filters=64, lstm_units=32)
 # result9 = get_results('64F-4K-64L', filters=64, lstm_units=64)
 
