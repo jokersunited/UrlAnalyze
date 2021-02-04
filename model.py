@@ -21,13 +21,14 @@ class TimeHistory(Callback):
     def on_epoch_end(self, batch, logs={}):
         self.times.append(time() - self.epoch_time_start)
 
+
 url_df = pd.read_csv('data.csv')
-test_df = pd.read_csv('urldata.csv')
-
-test_df = test_df.sample(frac=1).reset_index(drop=True)
-test_df = test_df.truncate(after=10000)
-
 url_df = url_df.sample(frac=1).reset_index(drop=True)
+
+test_df = url_df.truncate(before=35000, after=35100)
+test_df.loc[test_df['label'] == 'good', 'label'] = 0
+test_df.loc[test_df['label'] == 'bad', 'label'] = 1
+
 url_df = url_df.truncate(after=35000)
 url_df.loc[url_df['label'] == 'good', 'label'] = 0
 url_df.loc[url_df['label'] == 'bad', 'label'] = 1
@@ -48,7 +49,7 @@ test_df = test_df.to_numpy()
 #
 # print(url_ts)
 
-test_data = [get_embedding(url, 200) for url in test_df[:, 1]]
+test_data = [get_embedding(url, 200) for url in test_df[:, 0]]
 data = [get_embedding(url, 200) for url in url_df[:, 0]]
 
 
@@ -78,7 +79,7 @@ def get_results(name, filters=32, kernel_size=4, lstm_units=16, dropout=0.2):
     model.compile(optimizer=opt, loss=tf.keras.losses.BinaryCrossentropy(), metrics=['accuracy'])
 
     time_callback = TimeHistory()
-    history = model.fit(np.asarray(data), np.asarray(url_df[:, 1]).astype('float32'), epochs=20, batch_size=64, callbacks=[time_callback])
+    history = model.fit(np.asarray(data), np.asarray(url_df[:, 1]).astype('float32'), epochs=20, batch_size=batch_size, validation_split=0.2, shuffle=True, callbacks=[time_callback])
 
     test = model(np.asarray([get_embedding("adserving.favorit-network.com/eas?camp=19320;cre=mu&grpid=1738&tag_id=618&nums=FGApbjFAAA", 200)]))
     print("Testing url result (bad): " + str(test))
@@ -101,7 +102,7 @@ def get_results(name, filters=32, kernel_size=4, lstm_units=16, dropout=0.2):
     test = model(np.asarray([get_embedding("thestar.com/news/canada/politics/article/1067979--three-criminal-charges-for-tony-tomassi-ex-member-of-charest-cabinet-in-quebec", 200)]))
     print("Testing url result (good): " + str(test))
 
-    accuracy = model.evaluate(np.asarray(test_data), np.asarray(test_df[:, 3]).astype('float32'))
+    accuracy = model.evaluate(np.asarray(test_data), np.asarray(test_df[:, 1]).astype('float32'), batch_size=256)
     return [history, name, time_callback.times, accuracy]
 
 
@@ -114,7 +115,7 @@ def get_results(name, filters=32, kernel_size=4, lstm_units=16, dropout=0.2):
 # result4 = get_results('16F-2K-16L', filters=16, lstm_units=16, kernel_size=2)
 # result5 = get_results('32F-2K-32L', filters=32, lstm_units=32, kernel_size=2)
 # result6 = get_results('64F-2K-64L', filters=64, lstm_units=64, kernel_size=2)
-result7 = get_results('64F-4K-16L', filters=64, lstm_units=32)
+result7 = get_results('256F-4K-32L', filters=64, lstm_units=32)
 # result8 = get_results('64F-4K-32L', filters=64, lstm_units=32)
 # result9 = get_results('64F-4K-64L', filters=64, lstm_units=64)
 

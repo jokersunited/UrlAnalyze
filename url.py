@@ -1,7 +1,7 @@
 from utils import *
 import tensorflow as tf
 char_dict = gen_char_dict()
-embedding_layer = tf.keras.layers.Embedding(len(char_dict)+1, 64, input_length=200)
+embedding_layer = tf.keras.layers.Embedding(len(char_dict)+1, 128, input_length=200)
 
 def get_encoding(url, length):
     enc_list = []
