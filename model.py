@@ -2,6 +2,7 @@ import tensorflow as tf
 import pandas as pd
 from url import get_encoding, char_dict, embedding_layer
 import numpy as np
+from sklearn.model_selection import train_test_split
 
 from tensorflow.keras import Sequential
 from tensorflow.keras.layers import Convolution1D, Dense, MaxPool1D, LSTM, ReLU, Flatten, Embedding
@@ -10,6 +11,28 @@ from tensorflow.keras.callbacks import Callback
 
 from time import time
 import matplotlib.pyplot as plt
+
+def strip_proto(s):
+    if "https://" in s:
+        return s[8:]
+    else:
+        return s[7:]
+
+def get_encoding_proto(url, length):
+    url = strip_proto(url)
+    enc_list = []
+    url_str = url if len(url) <= length else url[:length]
+
+    for char in url_str:
+        if char in char_dict.keys():
+            enc_list.append(char_dict[char])
+        else:
+            enc_list.append(char_dict["UNK"])
+
+    for null in range(0, length - len(url_str)):
+        enc_list.append(0)
+
+    return enc_list
 
 class TimeHistory(Callback):
     def on_train_begin(self, logs={}):
@@ -23,22 +46,21 @@ class TimeHistory(Callback):
 
 
 url_df = pd.read_csv('data.csv')
-print(url_df)
-url_df = url_df.sample(frac=1).reset_index(drop=True)
+test_df = pd.read_csv('urldata.csv')
 
-test_df = url_df.truncate(before=35000, after=36000)
-test_df.loc[test_df['label'] == 'good', 'label'] = 0
-test_df.loc[test_df['label'] == 'bad', 'label'] = 1
+test_df = test_df.truncate(after=200)
 
-url_df.loc[url_df['label'] == 'good', 'label'] = 0
-url_df.loc[url_df['label'] == 'bad', 'label'] = 1
+url_df = url_df.truncate(after=1000)
+url_df.loc[url_df.label == 'good', 'label'] = 0
+url_df.loc[url_df.label == 'bad', 'label'] = 1
+
+X_train, X_test, y_train, y_test = train_test_split(url_df.url, url_df.label, test_size=0.33)
 batch_size = 64
 
 # good_df = url_df[url_df.label == 0].to_numpy()
 # bad_df = url_df[url_df.label == 1].to_numpy()
 
-url_df = url_df.to_numpy()
-test_df = test_df.to_numpy()
+# url_df = url_df.to_numpy()
 
 # print(good_df)
 # print(bad_df)
@@ -49,9 +71,12 @@ test_df = test_df.to_numpy()
 #
 # print(url_ts)
 
-test_data = [get_encoding(url, 200) for url in test_df[:, 0]]
-data = [get_encoding(url, 200) for url in url_df[:, 0]]
+X_train = np.asarray([get_encoding(url, 200) for url in X_train])
+X_test = np.asarray([get_encoding_proto(url, 200) for url in test_df.url])
+y_test = np.asarray(test_df.result).astype('float32')
 
+print(X_train)
+print(np.asarray(y_train))
 
 def create_model(url_len, filters=32, kernel_size=4, lstm_units=16, dropout=0.2):
 
@@ -80,7 +105,7 @@ def get_results(name, filters=32, kernel_size=4, lstm_units=16, dropout=0.2):
     model.compile(optimizer=opt, loss=tf.keras.losses.BinaryCrossentropy(), metrics=['accuracy'])
 
     time_callback = TimeHistory()
-    history = model.fit(np.asarray(data), np.asarray(url_df[:, 1]).astype('float32'), epochs=20, batch_size=batch_size, validation_split=0.2, shuffle=True, callbacks=[time_callback])
+    history = model.fit(X_train, np.asarray(y_train).astype('float32'), epochs=20, batch_size=batch_size, callbacks=[time_callback])
 
     test = model(np.asarray([get_encoding("adserving.favorit-network.com/eas?camp=19320;cre=mu&grpid=1738&tag_id=618&nums=FGApbjFAAA", 200)]))
     print("Testing url result (bad): " + str(test))
@@ -103,7 +128,7 @@ def get_results(name, filters=32, kernel_size=4, lstm_units=16, dropout=0.2):
     test = model(np.asarray([get_encoding("thestar.com/news/canada/politics/article/1067979--three-criminal-charges-for-tony-tomassi-ex-member-of-charest-cabinet-in-quebec", 200)]))
     print("Testing url result (good): " + str(test))
 
-    accuracy = model.evaluate(np.asarray(test_data), np.asarray(test_df[:, 1]).astype('float32'), batch_size=256)
+    accuracy = model.evaluate(X_test, y_test, batch_size=128)
     return [history, name, time_callback.times, accuracy]
 
 
