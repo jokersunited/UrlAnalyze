@@ -125,31 +125,31 @@ model_list = [result7]
 
 # print(result1[0].history.keys())
 #  "Accuracy"
-f1=plt.figure(1)
-for result in model_list:
-    plt.plot(result[0].history['accuracy'])
-plt.title('model accuracy')
-plt.ylabel('accuracy')
-plt.xlabel('epoch')
-plt.legend([result[1] for result in model_list], loc='upper left')
-# "Time"
-f2=plt.figure(2)
-for result in model_list:
-    plt.plot(result[2])
-plt.title('model cost')
-plt.ylabel('training time (/s)')
-plt.xlabel('epoch')
-plt.legend([result[1] for result in model_list], loc='upper left')
-
-f3=plt.figure(3)
-for result in model_list:
-    plt.plot(result[0].history['loss'])
-plt.title('model loss')
-plt.ylabel('loss')
-plt.xlabel('epoch')
-plt.legend([result[1] for result in model_list], loc='upper left')
-
-plt.show()
+# f1=plt.figure(1)
+# for result in model_list:
+#     plt.plot(result[0].history['accuracy'])
+# plt.title('model accuracy')
+# plt.ylabel('accuracy')
+# plt.xlabel('epoch')
+# plt.legend([result[1] for result in model_list], loc='upper left')
+# # "Time"
+# f2=plt.figure(2)
+# for result in model_list:
+#     plt.plot(result[2])
+# plt.title('model cost')
+# plt.ylabel('training time (/s)')
+# plt.xlabel('epoch')
+# plt.legend([result[1] for result in model_list], loc='upper left')
+#
+# f3=plt.figure(3)
+# for result in model_list:
+#     plt.plot(result[0].history['loss'])
+# plt.title('model loss')
+# plt.ylabel('loss')
+# plt.xlabel('epoch')
+# plt.legend([result[1] for result in model_list], loc='upper left')
+#
+# plt.show()
 
 # for i in range(0, 1000):
 #     # Take a random sample of the good batch to train
