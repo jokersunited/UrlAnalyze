@@ -6,7 +6,7 @@ char_dict = gen_char_dict()
 embedding_weights = np.asarray(np.zeros(len(char_dict)))
 one_hot = tf.one_hot(list(char_dict.values()), len(char_dict))
 embedding_weights = np.vstack((embedding_weights, one_hot))
-embedding_layer = tf.keras.layers.Embedding(len(char_dict)+1, 95, input_length=200, weights=[embedding_weights])
+embedding_layer = tf.keras.layers.Embedding(len(char_dict)+1, 95, input_length=200, trainable=True, weights=[embedding_weights])
 
 def get_encoding(url, length):
     enc_list = []

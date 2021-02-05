@@ -1,6 +1,6 @@
 import tensorflow as tf
 import pandas as pd
-from url import get_encoding, char_dict, embedding_layer
+from url import get_encoding, char_dict, embedding_layer, get_embedding
 import numpy as np
 from sklearn.model_selection import train_test_split
 
@@ -46,12 +46,10 @@ class TimeHistory(Callback):
 
 
 url_df = pd.read_csv('data.csv')
-test_df = pd.read_csv('urldata.csv')
+test_df = pd.read_csv('testing_phish.csv')
 
 url_df = url_df.sample(frac=1).reset_index(drop=True)
-test_df = test_df.sample(frac=1).reset_index(drop=True)
 
-test_df = test_df.truncate(after=2000)
 url_df = url_df.truncate(after=10000)
 url_df.loc[url_df.label == 'good', 'label'] = 0
 url_df.loc[url_df.label == 'bad', 'label'] = 1
@@ -72,10 +70,13 @@ batch_size = 64
 # exit()
 #
 # print(url_ts)
+print(X_train)
+print(get_embedding("radiofreecharlotte.uncc.edu/", 200))
+# exit()
 
 X_train = np.asarray([get_encoding(url, 200) for url in X_train])
 X_test = np.asarray([get_encoding_proto(url, 200) for url in test_df.url])
-y_test = np.asarray(test_df.result).astype('float32')
+y_test = np.asarray(test_df.phish).astype('float32')
 
 print(X_train)
 print(np.asarray(y_train))
@@ -146,7 +147,7 @@ def get_results(name, filters=32, kernel_size=4, lstm_units=16, dropout=0.2):
 # result4 = get_results('16F-2K-16L', filters=16, lstm_units=16, kernel_size=2)
 # result5 = get_results('32F-2K-32L', filters=32, lstm_units=32, kernel_size=2)
 # result6 = get_results('64F-2K-64L', filters=64, lstm_units=64, kernel_size=2)
-result7 = get_results('256F-4K-32L', filters=32, lstm_units=100)
+result7 = get_results('256F-4K-32L', filters=128, lstm_units=64)
 # result8 = get_results('64F-4K-32L', filters=64, lstm_units=32)
 # result9 = get_results('64F-4K-64L', filters=64, lstm_units=64)
 
