@@ -5,7 +5,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 
 from tensorflow.keras import Sequential
-from tensorflow.keras.layers import Convolution1D, Dense, MaxPool1D, LSTM, ReLU, Softmax, Dropout, Flatten
+from tensorflow.keras.layers import Conv1D, Dense, MaxPool1D, LSTM, ReLU, Softmax, Dropout, Flatten, Input, Concatenate, Bidirectional
 from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import Callback
 
@@ -81,22 +81,40 @@ y_test = np.asarray(test_df.phish).astype('float32')
 print(X_train)
 print(np.asarray(y_train))
 
+
+def convulations(input_shape=(200, 32)):
+    inp = Input(shape=input_shape)
+    convs = []
+    for k_no in range(3, 7):
+        conv = Conv1D(256, kernel_size=4,  activation='relu',input_shape=input_shape)(inp)
+        convs.append(conv)
+
+    out = Concatenate()(convs)
+
+    return Model(inputs=inp, outputs=out)
+
 def create_model(url_len, filters=32, kernel_size=4, lstm_units=16, dropout=0.2):
 
     pool = int(kernel_size/2)
 
     model = Sequential()
     model.add(embedding_layer)
-    model.add(Convolution1D(filters=filters, kernel_size=3))
-    model.add(ReLU())
-    model.add(MaxPool1D(pool_size=2))
-    model.add(LSTM(units=lstm_units, return_sequences=True))
-    model.add(Dropout(dropout))
-    model.add(Softmax())
-    model.add(Flatten())
+    model.add(Bidirectional(LSTM(256, dropout=0.3, recurrent_dropout=0.3, return_sequences=True)))
+    model.add(Bidirectional(LSTM(256, dropout=0.3, recurrent_dropout=0.3, return_sequences=True)))
+    model.add(Bidirectional(LSTM(128, dropout=0.3, recurrent_dropout=0.3)))
+    # # model.add(convulations())
+    # # # model.add(ReLU())
+    # # model.add(MaxPool1D(pool_size=2))
+    # # model.add(Dense(512, activation='relu'))
+    # # model.add(Dense(256, activation='relu'))
+    # # model.add(Dense(128, activation='relu'))
+    # # # model.add(LSTM(units=lstm_units, return_sequences=True))
+    # model.add(Dropout(dropout))
+    # model.add(Softmax())
+    # model.add(Flatten())
     model.add(Dense(1, activation='sigmoid'))
 
-    inputs = tf.keras.layers.Input(shape=(url_len, ))
+    inputs = Input(shape=(url_len, ))
     outputs = model(inputs)
 
     model.summary()
@@ -147,7 +165,7 @@ def get_results(name, filters=32, kernel_size=4, lstm_units=16, dropout=0.2):
 # result4 = get_results('16F-2K-16L', filters=16, lstm_units=16, kernel_size=2)
 # result5 = get_results('32F-2K-32L', filters=32, lstm_units=32, kernel_size=2)
 # result6 = get_results('64F-2K-64L', filters=64, lstm_units=64, kernel_size=2)
-result7 = get_results('256F-4K-32L', filters=128, lstm_units=64)
+result7 = get_results('256F-4K-32L', filters=256, lstm_units=64)
 # result8 = get_results('64F-4K-32L', filters=64, lstm_units=32)
 # result9 = get_results('64F-4K-64L', filters=64, lstm_units=64)
 

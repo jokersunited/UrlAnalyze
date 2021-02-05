@@ -24,7 +24,7 @@ print(np.asarray([get_encoding(strip_proto(x), 200) for x in test_data.url]))
 model.evaluate(np.asarray([get_encoding(strip_proto(x), 200) for x in test_data.url]), test_data.phish, batch_size=128)
 
 print(test_data.url)
-exit()
+# exit()
 for url in test_data.url:
     print(strip_proto(url))
     test = model(np.asarray([get_encoding(strip_proto(url), 200)]))
