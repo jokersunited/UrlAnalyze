@@ -1,6 +1,7 @@
 import tensorflow as tf
 import pandas as pd
 from url import get_encoding, char_dict, embedding_layer, get_embedding
+from modeltester import strip_proto
 import numpy as np
 from sklearn.model_selection import train_test_split
 
@@ -74,8 +75,8 @@ print(X_train)
 print(get_embedding("radiofreecharlotte.uncc.edu/", 200))
 # exit()
 
-X_train = np.asarray([get_encoding(url, 200) for url in X_train])
-X_test = np.asarray([get_encoding_proto(url, 200) for url in test_df.url])
+X_train = np.asarray([get_encoding(strip_proto(url), 200) for url in X_train])
+X_test = np.asarray([get_encoding_proto(strip_proto(url), 200) for url in test_df.url])
 y_test = np.asarray(test_df.phish).astype('float32')
 
 print(X_train)
@@ -101,12 +102,13 @@ def create_model(url_len, filters=32, kernel_size=3, lstm_units=16, dropout=0.2)
 
     model = Sequential()
     model.add(embedding_layer)
-    model.add(convulations())
-    # model.add(MaxPool1D(pool_size=2))
+    model.add(Conv1D(filters=64, kernel_size=3))
+    model.add(ReLU())
+    model.add(MaxPool1D(pool_size=2))
     # model.add(Dense(256))
     # model.add(Dropout(0.3))
     # model.add(Dense(128))
-    # model.add(LSTM(units=64, return_sequences=True))
+    model.add(LSTM(units=70, return_sequences=True))
     # model.add(Dropout(dropout))
     model.add(Softmax())
     model.add(Flatten())
