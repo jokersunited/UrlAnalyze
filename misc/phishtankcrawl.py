@@ -4,8 +4,9 @@ import pandas as pd
 import threading
 import time
 
-counter = 14910
-long_counter = 214
+counter = 22005
+long_counter = 15578
+extra_counter = [22005, 22019]
 
 url = "https://phishtank.com/phish_search.php"
 page_amt = 65000
@@ -29,15 +30,15 @@ for page in range(long_counter, page_amt):
                 link_soup = BeautifulSoup(resp.text, "html.parser")
                 full_phish_link = link_soup.find_all('span')[2].get_text()
                 if "Ray ID" in full_phish_link:
-                    print("[x] Limit")
-                    break
+                    print("[x] Limit at page " + str(page))
+                    time.sleep(500)
                 df = url_df.append({"url": full_phish_link, "live": 1 if "ONLINE" in table_data[item+3].contents[0] else 0}, ignore_index=True)
                 df.to_csv("phish_long.csv", mode='a', header=False, index=False)
-                time.sleep(1)
+                time.sleep(0.2)
             else:
-                pass
-                # df = url_df.append({"url": phish_link, "live": 1 if "ONLINE" in table_data[item+3].contents[0] else 0}, ignore_index=True)
-                # df.to_csv("phish_clean.csv",mode='a', header=False, index=False)
+                continue
+                df = url_df.append({"url": phish_link, "live": 1 if "ONLINE" in table_data[item+3].contents[0] else 0}, ignore_index=True)
+                df.to_csv("phish_clean.csv",mode='a', header=False, index=False)
     except:
         pass
 #

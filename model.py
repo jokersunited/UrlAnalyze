@@ -5,7 +5,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 
 from tensorflow.keras import Sequential
-from tensorflow.keras.layers import Conv1D, Dense, MaxPool1D, LSTM, ReLU, Softmax, Dropout, Flatten, Input, Concatenate, Bidirectional
+from tensorflow.keras.layers import Conv1D, Dense, MaxPool1D, LSTM, ReLU, Softmax, Dropout, Flatten, Input, Concatenate, UpSampling1D, ZeroPadding1D, Reshape
 from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import Callback
 
@@ -45,7 +45,7 @@ class TimeHistory(Callback):
         self.times.append(time() - self.epoch_time_start)
 
 
-url_df = pd.read_csv('data.csv')
+url_df = pd.read_csv('urldata.csv')
 test_df = pd.read_csv('testing_phish.csv')
 
 url_df = url_df.sample(frac=1).reset_index(drop=True)
@@ -54,7 +54,7 @@ url_df = url_df.truncate(after=10000)
 url_df.loc[url_df.label == 'good', 'label'] = 0
 url_df.loc[url_df.label == 'bad', 'label'] = 1
 
-X_train, X_test, y_train, y_test = train_test_split(url_df.url, url_df.label, test_size=0.33)
+X_train, X_test, y_train, y_test = train_test_split(url_df.url, url_df.result, test_size=0.33)
 batch_size = 64
 
 # good_df = url_df[url_df.label == 0].to_numpy()
@@ -86,32 +86,30 @@ def convulations(input_shape=(200, 32)):
     inp = Input(shape=input_shape)
     convs = []
     for k_no in range(3, 7):
-        conv = Conv1D(256, kernel_size=4,  activation='relu',input_shape=input_shape)(inp)
+        conv = Conv1D(256, kernel_size=k_no,  activation='relu', input_shape=input_shape)(inp)
+        conv = MaxPool1D()(conv)
+        conv = Reshape(target_shape=(-1,))(conv)
         convs.append(conv)
 
     out = Concatenate()(convs)
 
     return Model(inputs=inp, outputs=out)
 
-def create_model(url_len, filters=32, kernel_size=4, lstm_units=16, dropout=0.2):
+def create_model(url_len, filters=32, kernel_size=3, lstm_units=16, dropout=0.2):
 
     pool = int(kernel_size/2)
 
     model = Sequential()
     model.add(embedding_layer)
-    model.add(Bidirectional(LSTM(256, dropout=0.3, recurrent_dropout=0.3, return_sequences=True)))
-    model.add(Bidirectional(LSTM(256, dropout=0.3, recurrent_dropout=0.3, return_sequences=True)))
-    model.add(Bidirectional(LSTM(128, dropout=0.3, recurrent_dropout=0.3)))
-    # # model.add(convulations())
-    # # # model.add(ReLU())
-    # # model.add(MaxPool1D(pool_size=2))
-    # # model.add(Dense(512, activation='relu'))
-    # # model.add(Dense(256, activation='relu'))
-    # # model.add(Dense(128, activation='relu'))
-    # # # model.add(LSTM(units=lstm_units, return_sequences=True))
+    model.add(convulations())
+    # model.add(MaxPool1D(pool_size=2))
+    # model.add(Dense(256))
+    # model.add(Dropout(0.3))
+    # model.add(Dense(128))
+    # model.add(LSTM(units=64, return_sequences=True))
     # model.add(Dropout(dropout))
-    # model.add(Softmax())
-    # model.add(Flatten())
+    model.add(Softmax())
+    model.add(Flatten())
     model.add(Dense(1, activation='sigmoid'))
 
     inputs = Input(shape=(url_len, ))
@@ -124,7 +122,7 @@ def create_model(url_len, filters=32, kernel_size=4, lstm_units=16, dropout=0.2)
 def get_results(name, filters=32, kernel_size=4, lstm_units=16, dropout=0.2):
 
     model = create_model(200, filters=filters, kernel_size=kernel_size, lstm_units=lstm_units, dropout=dropout)
-    opt = tf.keras.optimizers.Adam(learning_rate=0.01)
+    opt = tf.keras.optimizers.Adam(learning_rate=0.1)
     model.compile(optimizer=opt, loss=tf.keras.losses.BinaryCrossentropy(), metrics=['accuracy'])
 
     time_callback = TimeHistory()
