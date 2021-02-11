@@ -6,7 +6,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 
 from tensorflow.keras import Sequential
-from tensorflow.keras.layers import Conv1D, Dense, MaxPool1D, LSTM, ReLU, Softmax, Dropout, Flatten, Input, Concatenate, UpSampling1D, ZeroPadding1D, Reshape
+from tensorflow.keras.layers import Conv2D, Dense, MaxPool2D, LSTM, ReLU, Softmax, Dropout, Flatten, Input, Concatenate, UpSampling1D, ZeroPadding1D, Reshape
 from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import Callback
 
@@ -83,17 +83,16 @@ print(X_train)
 print(np.asarray(y_train))
 
 
-def convulations(input_shape=(200, 32)):
+def convulations(input_shape=(32, 200, 1)):
     inp = Input(shape=input_shape)
     convs = []
     for k_no in range(3, 7):
-        conv = Conv1D(256, kernel_size=k_no,  activation='relu', input_shape=input_shape)(inp)
-        conv = MaxPool1D()(conv)
-        conv = Reshape(target_shape=(-1,))(conv)
+        conv = Conv2D(filters=256, kernel_size=k_no,  activation='relu', input_shape=input_shape)(inp)
+        conv = MaxPool2D(pool_size=(32-k_no+1, 1))(conv)
+        conv = Reshape(target_shape=(-1, 256))(conv)
         convs.append(conv)
 
-    out = Concatenate()(convs)
-
+    out = Concatenate(axis=1)(convs)
     return Model(inputs=inp, outputs=out)
 
 def create_model(url_len, filters=32, kernel_size=3, lstm_units=16, dropout=0.2):
@@ -102,15 +101,15 @@ def create_model(url_len, filters=32, kernel_size=3, lstm_units=16, dropout=0.2)
 
     model = Sequential()
     model.add(embedding_layer)
-    model.add(Conv1D(filters=64, kernel_size=3))
-    model.add(ReLU())
-    model.add(MaxPool1D(pool_size=2))
-    # model.add(Dense(256))
-    # model.add(Dropout(0.3))
-    # model.add(Dense(128))
-    model.add(LSTM(units=70, return_sequences=True))
-    # model.add(Dropout(dropout))
-    model.add(Softmax())
+    model.add(Reshape(target_shape=(32, 200, 1)))
+    print(convulations().summary())
+    model.add(convulations())
+    # model.add(MaxPool1D())
+    model.add(Dropout(0.5))
+    # model.add(Softmax())
+    model.add(Dense(512, activation='relu'))
+    model.add(Dense(256, activation='relu'))
+    model.add(Dense(128, activation='relu'))
     model.add(Flatten())
     model.add(Dense(1, activation='sigmoid'))
 
