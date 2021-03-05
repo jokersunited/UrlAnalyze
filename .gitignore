@@ -127,3 +127,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+/RESTAPI/rfmodel.pickle
+/RESTAPI/top250domains.csv

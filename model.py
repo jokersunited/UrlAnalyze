@@ -6,7 +6,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 
 from tensorflow.keras import Sequential
-from tensorflow.keras.layers import Conv2D, Dense, MaxPool2D, LSTM, ReLU, Softmax, Dropout, Flatten, Input, Concatenate, UpSampling1D, ZeroPadding1D, Reshape
+from tensorflow.keras.layers import Conv2D, Conv1D, Dense, MaxPool1D, LSTM, ReLU, Softmax, Dropout, Flatten, Input, Concatenate, UpSampling1D, ZeroPadding1D, Reshape, Bidirectional
 from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import Callback
 
@@ -51,7 +51,7 @@ test_df = pd.read_csv('testing_phish.csv')
 
 url_df = url_df.sample(frac=1).reset_index(drop=True)
 
-url_df = url_df.truncate(after=10000)
+# url_df = url_df.truncate(after=10000)
 url_df.loc[url_df.label == 'good', 'label'] = 0
 url_df.loc[url_df.label == 'bad', 'label'] = 1
 
@@ -83,17 +83,17 @@ print(X_train)
 print(np.asarray(y_train))
 
 
-def convulations(input_shape=(32, 200, 1)):
-    inp = Input(shape=input_shape)
-    convs = []
-    for k_no in range(3, 7):
-        conv = Conv2D(filters=256, kernel_size=k_no,  activation='relu', input_shape=input_shape)(inp)
-        conv = MaxPool2D(pool_size=(32-k_no+1, 1))(conv)
-        conv = Reshape(target_shape=(-1, 256))(conv)
-        convs.append(conv)
-
-    out = Concatenate(axis=1)(convs)
-    return Model(inputs=inp, outputs=out)
+# def convulations(input_shape=(32, 200, 1)):
+#     inp = Input(shape=input_shape)
+#     convs = []
+#     for k_no in range(3, 7):
+#         conv = Conv2D(filters=256, kernel_size=k_no,  activation='relu', input_shape=input_shape)(inp)
+#         conv = MaxPool2D(pool_size=(32-k_no+1, 1))(conv)
+#         conv = Reshape(target_shape=(-1, 256))(conv)
+#         convs.append(conv)
+#
+#     out = Concatenate(axis=1)(convs)
+#     return Model(inputs=inp, outputs=out)
 
 def create_model(url_len, filters=32, kernel_size=3, lstm_units=16, dropout=0.2):
 
@@ -101,16 +101,18 @@ def create_model(url_len, filters=32, kernel_size=3, lstm_units=16, dropout=0.2)
 
     model = Sequential()
     model.add(embedding_layer)
-    model.add(Reshape(target_shape=(32, 200, 1)))
-    print(convulations().summary())
-    model.add(convulations())
+    # model.add(Reshape(target_shape=(32, 200, 1)))
+    # print(convulations().summary())
+    # model.add(convulations())
     # model.add(MaxPool1D())
-    model.add(Dropout(0.5))
     # model.add(Softmax())
-    model.add(Dense(512, activation='relu'))
-    model.add(Dense(256, activation='relu'))
-    model.add(Dense(128, activation='relu'))
-    model.add(Flatten())
+    model.add(Conv1D(filters=512, kernel_size=3))
+    model.add(MaxPool1D(pool_size=2))
+    model.add(Bidirectional(LSTM(units=64, return_sequences=True,)))
+    model.add(Bidirectional(LSTM(units=32)))
+    model.add(Softmax())
+    # model.add(Dropout(0.5))
+    # model.add(Flatten())
     model.add(Dense(1, activation='sigmoid'))
 
     inputs = Input(shape=(url_len, ))
@@ -123,11 +125,11 @@ def create_model(url_len, filters=32, kernel_size=3, lstm_units=16, dropout=0.2)
 def get_results(name, filters=32, kernel_size=4, lstm_units=16, dropout=0.2):
 
     model = create_model(200, filters=filters, kernel_size=kernel_size, lstm_units=lstm_units, dropout=dropout)
-    opt = tf.keras.optimizers.Adam(learning_rate=0.1)
+    opt = tf.keras.optimizers.Adam(learning_rate=0.001)
     model.compile(optimizer=opt, loss=tf.keras.losses.BinaryCrossentropy(), metrics=['accuracy'])
 
     time_callback = TimeHistory()
-    history = model.fit(X_train, np.asarray(y_train).astype('float32'), epochs=20, batch_size=batch_size, validation_data=(X_test, y_test), validation_steps=24, callbacks=[time_callback])
+    history = model.fit(X_train, np.asarray(y_train).astype('float32'), epochs=5, shuffle=True, batch_size=batch_size, validation_data=(X_test, y_test))
 
     test = model(np.asarray([get_encoding("adserving.favorit-network.com/eas?camp=19320;cre=mu&grpid=1738&tag_id=618&nums=FGApbjFAAA", 200)]))
     print("Testing url result (bad): " + str(test))
