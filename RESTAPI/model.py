@@ -13,13 +13,17 @@ def get_prediction(url):
 def generate_result(url):
     result_dict = {'alerts': [], 'full': []}
     if url.get_topdomain() is True:
-        result_dict['alerts'].append({'title': "This website is from a trusted domain.", 'note': ''})
+        result_dict['alerts'].append({'title': "This website is from a trusted domain.", 'note': 'These are the top domains with the most traffic on the internet and are unlikely to be malicious'})
     print(url.df)
     for detail, column in zip(url.df.loc[0], url.df.columns):
         print(detail, column)
         if column == 'isip' and detail == True:
             result_dict['alerts'].append(alert_ref[column])
         if column == 'proto' and detail == False:
+            result_dict['alerts'].append(alert_ref[column])
+        if column == 'atchar' and detail == True:
+            result_dict['alerts'].append(alert_ref[column])
+        if column == 'domlen' and detail >= 20:
             result_dict['alerts'].append(alert_ref[column])
 
     result_dict['full'] = url.generate_raw_json()
