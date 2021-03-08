@@ -4,7 +4,8 @@ import pandas as pd
 import ssl, OpenSSL
 import re, whois
 from datetime import datetime
-from googletrans import Translator
+from langdetect import detect_langs
+import requests
 
 def gen_char_dict():
     alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-;.!?:'\"/\|_@#$%^&*~`+-=<>()[]{}"
@@ -150,8 +151,13 @@ class Url:
         return True if date.days < 0 else False
 
     def get_lang(self):
-
-        t = Translator().detect("hello world!")
+        res = requests.get(self.url_str)
+        print(res.text)
+        html_re = r'(<style.*>[^<]*<\/style>|<script.*>[^<]*<\/script>|<[^>]*>)'
+        body_text = re.sub(html_re, '', res.text)
+        print(body_text)
+        t = detect_langs(body_text)
+        print(t)
     # def get_cnn(self):
     #   res = model_char(tf.constant([get_encoding_proto(self.url_str, 200)]))
     #   return float(res[0][1])
@@ -180,8 +186,8 @@ class Url:
 
 
 # new_phish = Url("https://changewill.setamazonup.xyz/signim/", 1)
-new_phish = Url("https://facebook.com", 1)
-new_benign = Url("https://puffsandpeaks.com", 0)
+new_phish = Url("https://changewill.setamazonup.xyz/signim/", 1)
+new_benign = Url("https://www.kh.hu/bank", 0)
 # print(new_phish.get_dates(key='creation'))
 # print(new_phish.get_dates(key='expiration'))
 # print("\n")
@@ -189,3 +195,5 @@ new_benign = Url("https://puffsandpeaks.com", 0)
 # print(new_benign.get_dates(key='expiration'))
 print(new_benign.get_val())
 print(new_phish.get_val())
+print(new_phish.get_lang())
+print(new_benign.get_lang())
