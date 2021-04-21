@@ -92,13 +92,22 @@ def get_result(url):
     pass
 def generate_result(url):
     result_dict = {'alerts': [], 'full': []}
-    result_dict['result'] = True
-    if url.get_topdomain() is True:
-        result_dict['alerts'].append(alert_ref['topdomain'])
-        result_dict['result'] = False
-    url_df = url.generate_df()
+    result_dict['result'] = False
+
     result_dict['rf'] = "Phishing" if get_rfprediction(url) == 1 else "Benign"
     result_dict['cnn'] = "Phishing" if get_cnnprediction(url) > 50 else "Benign"
+
+    if result_dict['rf'] == "Phishing" or result_dict['cnn'] == "Phishing":
+        result_dict['result'] = True
+
+    if url.get_topdomain() is True:
+        result_dict['result'] = False
+        result_dict['top'] = "true"
+    else:
+        result_dict['top'] = "false"
+    url_df = url.generate_df()
+
+
 
     for detail, column in zip(url_df.loc[0], url_df.columns):
         print(detail, column)
@@ -108,8 +117,64 @@ def generate_result(url):
             result_dict['alerts'].append(alert_ref[column])
         if column == 'atchar' and detail == True:
             result_dict['alerts'].append(alert_ref[column])
-        if column == 'domlen' and detail >= 20:
+        if column == 'subcount' and detail > 4:
+            result_dict['alerts'].append(alert_ref[column])
+        if column == 'hyphencount' and detail > 2:
+            result_dict['alerts'].append(alert_ref[column])
+        if column == 'domlen' and detail > 30:
             result_dict['alerts'].append(alert_ref[column])
 
     result_dict['full'] = url.generate_raw_json()
     return result_dict
+
+def checklinkperc(url):
+    loc = url.get_linkperc('loc')
+
+    if loc is None:
+        return False
+    else:
+        if int(loc.split("%")[0]) < 30:
+            return True
+        else:
+            return False
+
+def generate_result_full(url):
+    score = 0
+    basic_dict = generate_result(url)
+    basic_dict['live'] = {}
+
+    basic_dict['live']['screenshot'] = url.screenshot
+    basic_dict['live']['redirects'] = url.redirects
+
+    if get_rfprediction(url) == 1: score += 1
+    if get_cnnprediction(url) == 1: score += 1
+
+    if len(url.redirects) > 1:
+        score += 1
+        basic_dict['alerts'].append(alert_ref['redirects'])
+    if url.cert is not None and url.ocsp != "GOOD":
+        score += 3
+        basic_dict['alerts'].append(alert_ref['ocsp'])
+    if checklinkperc(url):
+        score += 2
+        basic_dict['alerts'].append(alert_ref['links'])
+    if url.get_uniqlocal() < 0.8:
+        score += 2
+        basic_dict['alerts'].append(alert_ref['uniq'])
+
+    if url.get_topdomain() is True:
+        score = 0
+
+    if score == 0:
+        basic_dict['score'] = "Very Unlikely"
+    elif score < 3:
+        basic_dict['score'] = "Unlikely"
+    elif score < 6:
+        basic_dict['score'] = "Neutral"
+    elif score < 9:
+        basic_dict['score'] = "Likely"
+    else:
+        basic_dict['score'] = "Very Likely"
+
+    return basic_dict
+

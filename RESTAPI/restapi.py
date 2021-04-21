@@ -20,7 +20,13 @@ class LiveURL(Resource):
         if 'url' not in request.args.keys():
             abort(400)
         url = LiveUrl(request.args['url'])
-        return {'live': 'world'}
+        if url.dns is True:
+            detail = generate_result_full(url)
+            return detail
+        else:
+            detail = generate_result(url)
+            detail['livestatus'] = "false"
+            return detail
 
 @app.after_request
 def after_request(response):
@@ -31,7 +37,7 @@ def after_request(response):
 
 
 api.add_resource(BasicURL, '/basic')
-api.add_resource(LiveURL, '/live')
+api.add_resource(LiveURL, '/full')
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
