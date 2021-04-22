@@ -13,15 +13,15 @@ except:
     pass
 
 # Load and initialise the RandomForest model
-with open('./data/rfmodel.pickle', 'rb') as f:
+with open('../RESTAPI/data/rfmodel.pickle', 'rb') as f:
     model = pickle.load(f)
 
 # Load and initialize the json alert object
-with open ('alerts.json', 'rb') as f:
+with open ('../RESTAPI/alerts.json', 'rb') as f:
     alert_ref = json.load(f)['alerts']
 
 # Load and initialize the CNN model
-model_char = keras.models.load_model('./data/modelchar')
+model_char = keras.models.load_model('../RESTAPI/data/modelchar')
 
 # Generate a dictionary with character mapping
 def gen_char_dict():

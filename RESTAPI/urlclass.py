@@ -4,15 +4,17 @@ import whois, tldextract
 import socket
 import json
 import pandas as pd
-from RESTAPI.model import *
 
 from selenium import webdriver
 from selenium.common.exceptions import WebDriverException
 from webdriver_manager.chrome import ChromeDriverManager
+from webdriver_manager.utils import ChromeType
 from bs4 import BeautifulSoup
 
 from ocspchecker import ocspchecker
 from urllib.parse import urlparse
+
+import requests
 
 def get_status(logs):
     """
@@ -62,12 +64,12 @@ capabilities = options.to_capabilities()
 capabilities['goog:loggingPrefs'] = {'performance': 'ALL'}
 
 # Start a selenium service so can call it and we don't need to create an instance for every URL
-service = webdriver.chrome.service.Service(ChromeDriverManager().install())
+service = webdriver.chrome.service.Service(ChromeDriverManager(chrome_type=ChromeType.GOOGLE).install())
 service.start()
 
 
 # Read the top domains from the specified CSV file
-top_domains = list(pd.read_csv('./data/top250domains.csv')['domain'])
+top_domains = list(pd.read_csv('../RESTAPI/data/top250domains.csv')['domain'])
 
 # Declare the features to be used in the RF Classifier
 feature_list = ['length', 'subcount', 'proto', 'pathdir', 'pathlen', 'querylen', 'queryparam', 'isip', 'pathspecial',
@@ -84,12 +86,6 @@ class Url:
         self.url_str = url
         self.urlparse = urlparse(url)
         self.domaininfo = tldextract.extract(self.url_str)
-        self.rf = get_rfprediction(self)
-        self.cnn = get_cnnprediction(self)
-
-        print(self.rf)
-        print(self.cnn)
-
 
     def generate_raw_json(self):
         return json.loads(self.generate_df().iloc[0].to_json())
@@ -247,6 +243,7 @@ class LiveUrl(Url):
 
         print("\n[*] Getting info for " + self.url_str)
         self.dns = self.get_dns()
+        # self.req = self.get_live()
 
         self.link_dict = None
         self.uniq_dom = None
@@ -349,40 +346,47 @@ class LiveUrl(Url):
 
     # ======================= Live Features ========================
 
+    def get_live(self):
+        try:
+            requests.get(self.url)
+        except Exception as e:
+            return False
+
+
     def get_dns(self):
         try:
             addr_info = socket.getaddrinfo(self.urlparse.netloc, None)
             # print(addr_info)
+            return True
         except socket.gaierror:
             return False
-        else:
-            return True
+
 
     def get_linkperc(self, link):
 
-        if self.link_count != 0:
-            print("\n===== Hyperlink Info =====")
-            print("Total links: " + str(self.link_count))
-            print("\nloc %:" + str(len(self.link_dict['loc']) / self.link_count * 100))
-            print("ext %:" + str(len(self.link_dict['ext']) / self.link_count * 100))
-            print("static %:" + str(len(self.link_dict['static']) / self.link_count * 100))
-
-            if len(self.uniq_dom.keys()) > 0:
-                print("\nUnique external domains: ")
-                for key in self.uniq_dom.keys():
-                    print("- " + key)
-            if len(self.link_dict['loc']) > 0:
-                print("\nUnique local links %: " + str(self.get_uniqlocal() * 100))
-            else:
-                print("\nNo Local Links!")
-
-            print("\n===== Potential Spoof Domain Scores =====")
-            print(self.spoof.items())
-            for key, value in self.spoof.items():
-                if value > 0.4: print(key + ": " + str(value))
-
-        else:
-            print("\nNo hyperlinks on page!")
+        # if self.link_count != 0:
+        #     print("\n===== Hyperlink Info =====")
+        #     print("Total links: " + str(self.link_count))
+        #     print("\nloc %:" + str(len(self.link_dict['loc']) / self.link_count * 100))
+        #     print("ext %:" + str(len(self.link_dict['ext']) / self.link_count * 100))
+        #     print("static %:" + str(len(self.link_dict['static']) / self.link_count * 100))
+        #
+        #     if len(self.uniq_dom.keys()) > 0:
+        #         print("\nUnique external domains: ")
+        #         for key in self.uniq_dom.keys():
+        #             print("- " + key)
+        #     if len(self.link_dict['loc']) > 0:
+        #         print("\nUnique local links %: " + str(self.get_uniqlocal() * 100))
+        #     else:
+        #         print("\nNo Local Links!")
+        #
+        #     print("\n===== Potential Spoof Domain Scores =====")
+        #     print(self.spoof.items())
+        #     for key, value in self.spoof.items():
+        #         if value > 0.4: print(key + ": " + str(value))
+        #
+        # else:
+        #     print("\nNo hyperlinks on page!")
 
         if self.link_count > 0:
             return str(int(len(self.link_dict[link]) / self.link_count * 100))+"%"
@@ -505,10 +509,11 @@ class LiveUrl(Url):
             link = link.get('href')
             self.link_count += 1
             if link is None or len(link) == 0 or link[0] == "#" or link[0] == "?" or "javascript:" in link:
+                if link is not None and "javascript:" in link:
+                    link = "".join(link.split(":")[1:]).replace(" ", "")
                 link_dict['static'].append(link)
-            elif 'mailto:' in link:
-                mail_dom = link.split("@")[1]
-                link_dict['mail'].append(mail_dom)
+            elif "mailto:" in link:
+                link_dict['mail'].append(link)
             elif link[0] == "/" or tldextract.extract(
                     link).registered_domain == self.domaininfo.registered_domain or "://" not in link:
                 link_dict['loc'].append(link)
@@ -530,5 +535,15 @@ class LiveUrl(Url):
         self.uniq_dom = uniq_dom
 
     def get_uniqlocal(self):
-        uniq_loc = list(dict.fromkeys(self.link_dict['loc']))
-        return len(uniq_loc) / len(self.link_dict['loc'])
+        print(self.link_dict['loc'])
+        print(self.link_dict['static'])
+        if len(self.link_dict['loc']) != 0:
+            uniq_loc = list(dict.fromkeys(self.link_dict['loc']))
+            static = len(list(dict.fromkeys(self.link_dict['static'])))
+            return (len(uniq_loc)+static-1) / (len(self.link_dict['loc'])+len(self.link_dict['static']))
+        else:
+            try:
+                static = len(list(dict.fromkeys(self.link_dict['static'])))
+                return (static-1)/len(self.link_dict['static'])
+            except ZeroDivisionError:
+                return 0
