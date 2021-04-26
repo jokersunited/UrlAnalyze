@@ -1,12 +1,12 @@
 import pandas as pd
 from RESTAPI.urlclass import LiveUrl
 
-legit = pd.read_csv("smalllegitsample.csv")
+legit = pd.read_csv("smalllegitsample.csv").truncate(before=468)
 
 columns = ["url", "link", "loc", "ext", "static", "uniq", "label"]
 url_df = pd.DataFrame(columns=columns)
 
-counter = 0
+counter = 819
 for url in legit['URL']:
     print("[*] Processing URL " + str(counter))
     counter += 1
@@ -20,4 +20,4 @@ for url in legit['URL']:
         print(e)
         continue
 
-#Last stop URL 468
+#Last stop URL ?

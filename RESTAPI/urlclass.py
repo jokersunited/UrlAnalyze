@@ -515,7 +515,7 @@ class LiveUrl(Url):
             elif "mailto:" in link:
                 link_dict['mail'].append(link)
             elif link[0] == "/" or tldextract.extract(
-                    link).registered_domain == self.domaininfo.registered_domain or "://" not in link:
+                    link).registered_domain == tldextract.extract(self.final_url).registered_domain or "://" not in link:
                 link_dict['loc'].append(link)
             else:
                 base_dom = tldextract.extract(link).registered_domain
@@ -535,8 +535,8 @@ class LiveUrl(Url):
         self.uniq_dom = uniq_dom
 
     def get_uniqlocal(self):
-        print(self.link_dict['loc'])
-        print(self.link_dict['static'])
+        # print(self.link_dict['loc'])
+        # print(self.link_dict['static'])
         if len(self.link_dict['loc']) != 0:
             uniq_loc = list(dict.fromkeys(self.link_dict['loc']))
             static = len(list(dict.fromkeys(self.link_dict['static'])))

@@ -95,9 +95,9 @@ def generate_result(url):
     result_dict['result'] = False
 
     result_dict['rf'] = "Phishing" if get_rfprediction(url) == 1 else "Benign"
-    result_dict['cnn'] = "Phishing" if get_cnnprediction(url) > 50 else "Benign"
+    result_dict['cnn'] = get_cnnprediction(url)
 
-    if result_dict['rf'] == "Phishing" or result_dict['cnn'] == "Phishing":
+    if result_dict['rf'] == "Phishing" or result_dict['cnn'] > 50:
         result_dict['result'] = True
 
     if url.get_topdomain() is True:
