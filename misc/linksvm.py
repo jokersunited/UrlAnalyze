@@ -8,6 +8,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from xgboost import XGBClassifier
 from sklearn.naive_bayes import MultinomialNB
+import matplotlib.pyplot as plt
 
 from threading import Thread, Lock
 
@@ -68,6 +69,7 @@ for c in hyper_list:
     print("\nAccuracy (C: " + str(c) + ", gamma: " + str('auto') + ") - ", metrics.accuracy_score(y_test, y_pred))
     # print("\nAccuracy - ", metrics.accuracy_score(y_test, y_pred))
     print("Time taken: " + str(timedelta(seconds=end - start)))
+
     result_list.append([[c, 0], metrics.accuracy_score(y_test, y_pred)])
 
 
@@ -83,6 +85,10 @@ y_pred = clf.predict(X_test)
 
 print(metrics.classification_report(y_test, y_pred, target_names=['benign', 'phish']))
 print("\nAccuracy (C: " + str(best[0]) + ", gamma: " + str(best[1]) + ") - ", metrics.accuracy_score(y_test, y_pred))
+metrics.plot_confusion_matrix(clf, X_test, y_test,
+                              display_labels=['benign', 'phish'],
+                              cmap=plt.cm.Blues, normalize='true')
+plt.show()
 
 # start = timer()
 #
@@ -156,8 +162,8 @@ for url in url_list:
 for t in thread_list:
     t.join()
 
-# print(url_frame)
-# url_frame[feature_list] = scaler.transform(url_frame)
-# print(url_frame)
-# print(clf.predict(url_frame))
-# print(clf.predict_proba(url_frame))
+print(url_frame)
+url_frame[feature_list] = scaler.transform(url_frame)
+print(url_frame)
+print(clf.predict(url_frame))
+print(clf.predict_proba(url_frame))

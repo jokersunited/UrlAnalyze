@@ -2,6 +2,8 @@ import tensorflow as tf
 import keras
 import pickle
 import json
+import pandas as pd
+
 #
 # from urlclass import Url
 
@@ -15,6 +17,11 @@ except:
 # Load and initialise the RandomForest model
 with open('../RESTAPI/data/rfmodel.pickle', 'rb') as f:
     model = pickle.load(f)
+
+# Load and initialise the LiveSVM model
+with open('../RESTAPI/data/livesvm.pickle', 'rb') as f:
+    livemodel = pickle.load(f)
+    feature_list = ["link", "loc", "ext", "static", "uniq"]
 
 # Load and initialize the json alert object
 with open ('../RESTAPI/alerts.json', 'rb') as f:
@@ -88,6 +95,27 @@ def get_cnnprediction(url):
     char_X = tf.constant([get_encoding_proto(url.url_str, 200)])
     return float(model_char(char_X)[0][1])*100
 
+def get_livelinkprediction(url_phish):
+    """
+    Gets prediction from the CNN Model
+    :param url: LiveUrl object
+    :return: List with index 0 as the prediction and index 1 as the probability
+    """
+    if url_phish.dns is True and url_phish.access is True and url_phish.link_count > 0:
+        data = {"link": url_phish.link_count, "loc": float(url_phish.get_linkperc("loc").split("%")[0])/100,
+         "ext": float(url_phish.get_linkperc("ext").split("%")[0])/100, "static": float(url_phish.get_linkperc("static").split("%")[0])/100,
+         "uniq": url_phish.get_uniqlocal()}
+    elif url_phish.link_count == 0:
+        data = {"link": 0, "loc": 0, "ext": 0, "static": 0, "uniq": 0}
+    else:
+        return
+    url_frame = pd.DataFrame(data, index=[0])
+    url_frame[feature_list] = livemodel['scaler'].transform(url_frame[feature_list])
+    result = int(livemodel['model'].predict([url_frame.iloc[0]])[0])
+    proba = "{:.2f}".format(float(livemodel['model'].predict_proba([url_frame.iloc[0]])[0][result])*100)
+
+    return result, proba
+
 def get_result(url):
     pass
 def generate_result(url):
@@ -143,11 +171,16 @@ def generate_result_full(url):
     basic_dict = generate_result(url)
     basic_dict['live'] = {}
 
+    basic_dict['livelink'] = get_livelinkprediction(url)
+
     basic_dict['live']['screenshot'] = url.screenshot
     basic_dict['live']['redirects'] = url.redirects
 
     if get_rfprediction(url) == 1: score += 1
     if get_cnnprediction(url) == 1: score += 1
+    if get_livelinkprediction(url)[0] == 1:
+        score += 5
+        basic_dict['alerts'].append(alert_ref['links'])
 
     if len(url.redirects) > 1:
         score += 1
@@ -155,12 +188,17 @@ def generate_result_full(url):
     if url.cert is not None and url.ocsp != "GOOD":
         score += 3
         basic_dict['alerts'].append(alert_ref['ocsp'])
-    if checklinkperc(url):
+    elif url.cert is None:
         score += 2
-        basic_dict['alerts'].append(alert_ref['links'])
-    if url.get_uniqlocal() < 0.8:
+    if url.get_spoofed() != "Unknown":
         score += 2
-        basic_dict['alerts'].append(alert_ref['uniq'])
+        basic_dict['alerts'].append({"title": "Potential Spoofed Site <b>(" + url.get_spoofed() + ")</b>", "note": "This site might be trying to pose as " + url.get_spoofed()})
+    # if checklinkperc(url):
+    #     score += 2
+    #     basic_dict['alerts'].append(alert_ref['links'])
+    # if url.get_uniqlocal() < 0.8:
+    #     score += 2
+    #     basic_dict['alerts'].append(alert_ref['uniq'])
 
     if url.get_topdomain() is True:
         score = 0
@@ -169,9 +207,9 @@ def generate_result_full(url):
         basic_dict['score'] = "Very Unlikely"
     elif score < 3:
         basic_dict['score'] = "Unlikely"
-    elif score < 6:
+    elif score < 5:
         basic_dict['score'] = "Neutral"
-    elif score < 9:
+    elif score < 8:
         basic_dict['score'] = "Likely"
     else:
         basic_dict['score'] = "Very Likely"
